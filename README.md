@@ -8,7 +8,7 @@ Johs and Hale illustrated their use for modeling dielectric functions, but they 
 Installation.
 ```{julia}
 using Pkg
-Pkg.add()
+Pkg.add(url = "https://github.com/stakahama/BSplineDielectric.jl")
 ```
 
 Example usage.
@@ -37,6 +37,10 @@ B = eps2basis(1, x[i], x)
 plot(x, B.basis(1))
 plot(x, B.basis(1:2), legend = false)
 
+## Get full basis matrices
+Bmat = expand(B)
+ϕmat = expand(ϕ)
+
 ## Estimate spline coefficients
 coef =  Bmat \ curve
 
@@ -46,9 +50,10 @@ plot!(x, Bmat * coef, label = "ε₂ model")
 plot!(x, ϕmat * coef, label = "ε₁ model")
 
 ## Apply same coefficients on B-splines of degree 3
-B3 = eps2basis(3, omega[ipos], omega)
-ϕ3 = eps1basis(3, omega[ipos], omega)
+B3 = eps2basis(3, x[i], x)
+ϕ3 = eps1basis(3, x[i], x)
 
-plot(omega, expand(B3) * coef, label = "ε₂ model")
-plot!(omega, expand(ϕ3) * coef, label = "ε₁ model")
+## Plot
+plot(x, expand(B3) * coef, label = "ε₂ model")
+plot!(x, expand(ϕ3) * coef, label = "ε₁ model")
 ```
