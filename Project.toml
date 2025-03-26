@@ -1,0 +1,13 @@
+name = "BSplineDielectric"
+uuid = "3f0de8df-4132-4c24-9866-68b776376c04"
+authors = ["stakahama <satoshi.takahama@gmail.com> and contributors"]
+version = "0.1.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia = "1"
+
+[targets]
+test = ["Test"]
