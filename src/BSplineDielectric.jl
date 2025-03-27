@@ -6,52 +6,62 @@ Implementation of Johs and Hale, doi:10.1002/pssa.200777754, 2008
 """
 module BSplineDielectric
 
-export MDF, eps2basis, eps1basis, nknots
+export MDF, eps2basis, eps1basis, knots, nknots
 
-Idx = Union{Integer, Vector{<:Integer}, UnitRange{<:Integer}}
+IdxType = Union{Integer, AbstractVector{<:Integer}, AbstractUnitRange{<:Integer}}
+VarType = Union{Real, AbstractVector{<:Real}}
 
 """
 (MDF) model dielectric function
 subtype of Function abstract type
 
 ### Fields
-f: model function
-n: number of knots
+- `f`: model function
+- `k`: degree of B-splines
+- `t`: knots
+- `n`: number of knots
+
+### Methods
+- `(f::MDF)(i::IdxType, x::VarType)`: basis vector or matrix for given knot index/indices and wavelength/wavenumber/frequency position(s) 
+- `(f::MDF)(x::VarType)`: full basis matrix for wavelength/wavenumber/frequency position(s)
+where
+- `IdxType = Union{Integer, AbstractVector{<:Integer}, AbstractUnitRange{<:Integer}}`
+- `VarType = Union{Real, AbstractVector{<:Real}}`
+The knots and number of knots can be retrieved with `knots` and `nknots`, respectively.
 """
 struct MDF <: Function
     f::Function
+    k::Integer
+    t::Vector{<:Real}
     n::Integer
 end
 
-(f::MDF)(args...) = f.f(args...)
+(f::MDF)(i::IdxType, x::VarType) = f.f.(f.k, transpose(i), x)
+(f::MDF)(x::VarType) = f.f.(f.k, transpose(1:f.n), x)
+knots(f::MDF) = f.t
 nknots(f::MDF) = f.n
 
 """
 Basis functions for ε₂ (imaginary dielectric function)
 
 ### Parameters
-k: degree of B-splines
-t: vector of knot positions
+- k: degree of B-splines
+- t: vector of knot positions
 
-### Return value
-struct of type MDF - can be called as a function. fields:
-f: vectorized function (polymorphic)
-   f(indices, positions): basis vector or matrix (partial) for knot index(indices) and wavelength/wavenumber/frequency position(s)
-   f(positions): full basis matrix for wavelength/wavenumber/frequency position(s)
-n: number of knots
-
+### Returns
+struct of type MDF - can be called as a function.
 
 ### Example
-B = eps2basis(k, knots)
+    B = eps2basis(k, knots)
 
-## at first knot
-plot(x, B(1, x))
+    ## at first knot
+    plot(x, B(1, x))
 
-## at first two knots
-plot(x, B(1:2, x))
+    ## at first two knots
+    plot(x, B(1:2, x))
 
-## full basis expansion
-plot(x, B(x) * ones(nknots(B)))
+    ## full basis expansion
+    plot(x, B(x) * ones(nknots(B)))
 """
 function eps2basis(k, t)
     N = length(t)
@@ -65,37 +75,30 @@ function eps2basis(k, t)
                 (t[i+k+1] - x) / (t[i+k+1] - t[i+1]) * B(k-1, i+1, x)
         end
     end
-    ## k, t are fixed
-    f(i::Idx, x) = B.(k, transpose(i), x)
-    f(x) = B.(k, transpose(1:N), x)
-    return MDF(f, N)
+    return MDF(B, k, t, N)
 end
 
 """
 Basis functions for ε₁ (real dielectric function)
 
 ### Parameters
-k: degree of B-splines
-t: vector of knots
+- k: degree of B-splines
+- t: vector of knots
 
-### Return value
-struct of type MDF - can be called as a function. fields:
-f: vectorized function (polymorphic)
-   f(indices, positions): basis vector or matrix (partial) for knot index(indices) and wavelength/wavenumber/frequency position(s)
-   f(positions): full basis matrix for wavelength/wavenumber/frequency position(s)
-n: number of knots
+### Returns
+struct of type MDF - can be called as a function.
 
 ### Example
-ϕ = eps1basis(k, knots)
+    ϕ = eps1basis(k, knots)
 
-## at first knot
-plot(x, ϕ(1, x))
+    ## at first knot
+    plot(x, ϕ(1, x))
 
-## at first two knots
-plot(x, ϕ(1:2, x))
+    ## at first two knots
+    plot(x, ϕ(1:2, x))
 
-## full basis expansion
-plot(x, ϕ(x) * ones(nknots(ϕ)))
+    ## full basis expansion
+    plot(x, ϕ(x) * ones(nknots(ϕ)))
 """
 function eps1basis(k, t)
     N = length(t)
@@ -128,10 +131,7 @@ function eps1basis(k, t)
         end
     end
     ϕ(k, i, ω) = 1 / π * (I(k, i, ω) + I(k, i, -ω))
-    ## k, t are fixed
-    f(i::Idx, x) = ϕ.(k, transpose(i), x)
-    f(x) = ϕ.(k, transpose(1:N), x)
-    return MDF(f, N)
+    return MDF(ϕ, k, t, N)
 end
 
 end

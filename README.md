@@ -39,6 +39,9 @@ plot(x, B(1:2, x), legend = false)
 ## Get number of knots (maximum allowable index)
 nknots(B)  # same with nknots(ϕ)
 
+## Get knot positions
+knots(B)  # same with knots(ϕ)
+
 ## Get full basis matrices evaluated at x
 Bmat = B(x)
 ϕmat = ϕ(x)
