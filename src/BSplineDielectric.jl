@@ -1,25 +1,25 @@
-#=
+"""
 ================================================================================
 Recursive B-splines to model functions that fulfill Kramers Kronig relations
 Implementation of Johs and Hale, doi:10.1002/pssa.200777754, 2008
 ================================================================================
-=#
-
+"""
 module BSplineDielectric
 
-export MDF, expand, eps2basis, eps1basis
+export MDF, eps2basis, eps1basis
 
-#=
+Idx = Union{Integer, Vector{<:Integer}, UnitRange{<:Integer}}
+
+"""
 (MDF) model dielectric function
-also includes information on number of knots
-=#
-struct MDF
-    basis::Function
-    n::Integer
-end
 
-function expand(x::MDF)
-    return x.basis(1:x.n)
+### Fields
+f: model function
+n: number of knots
+"""
+struct MDF
+    f::Function
+    n::Integer
 end
 
 """
@@ -27,30 +27,32 @@ Basis functions for ε₂ (imaginary dielectric function)
 
 ### Parameters
 k: degree of B-splines
-t: vector of knots
-x: wavenumber or frequency
+t: vector of knot positions
 
 ### Return value
-struct of type MDF
+struct of type MDF. fields:
+f: vectorized function (polymorphic)
+   f(indices, positions): basis vector or matrix (partial) for knot index(indices) and wavelength/wavenumber/frequency position(s)
+   f(positions): full basis matrix for wavelength/wavenumber/frequency position(s)
+n: number of knots
 
 ### Example
-B = eps2basis(k, i, x)
+B = eps2basis(k, knots)
 
 ## at first knot
-plot(x, B.basis(1))
+plot(x, B.f(1, x))
 
 ## at first two knots
-plot(x, B.basis(1:2))
+plot(x, B.f(1:2, x))
 
 ## full basis expansion
-Bmatrix = expand(B)
-plot(x, Bmatrix * ones(size(Bmatrix, 2)))
+plot(x, B.f(x) * ones(B.n))
 """
-function eps2basis(k, t, x)
-    Nₜ = length(t)
+function eps2basis(k, t)
+    N = length(t)
     B⁰(i, x) = t[i] <= x < t[i+1] ? 1 : 0
     function B(k, i, x)
-        if (i+k+1 > Nₜ); return 0; end
+        if (i+k+1 > N); return 0; end
         if k == 0
             B⁰(i, x)
         else
@@ -58,8 +60,10 @@ function eps2basis(k, t, x)
                 (t[i+k+1] - x) / (t[i+k+1] - t[i+1]) * B(k-1, i+1, x)
         end
     end
-    # return B.(k, transpose(1:Nₜ), x)
-    return MDF(i -> B.(k, transpose(i), x), Nₜ)
+    ## k, t are fixed
+    f(i::Idx, x) = B.(k, transpose(i), x)
+    f(x) = B.(k, transpose(1:N), x)
+    return MDF(f, N)
 end
 
 """
@@ -68,35 +72,36 @@ Basis functions for ε₁ (real dielectric function)
 ### Parameters
 k: degree of B-splines
 t: vector of knots
-x: wavenumbers
 
 ### Return value
-struct of type MDF
+struct of type MDF. fields:
+f: vectorized function (polymorphic)
+   f(indices, positions): basis vector or matrix (partial) for knot index(indices) and wavelength/wavenumber/frequency position(s)
+   f(positions): full basis matrix for wavelength/wavenumber/frequency position(s)
+n: number of knots
 
 ### Example
-ϕ = eps1basis(k, i, x)
+ϕ = eps1basis(k, knots)
 
 ## at first knot
-plot(x, ϕ.basis(1))
+plot(x, ϕ.f(1, x))
 
 ## at first two knots
-plot(x, ϕ.basis(1:2))
+plot(x, ϕ.f(1:2, x))
 
 ## full basis expansion
-ϕmatrix = expand(ϕ)
-plot(x, ϕmatrix * ones(size(ϕmatrix, 2)))
+plot(x, ϕ.f(x) * ones(ϕ.n))
 """
-function eps1basis(k, t, x)
-    Nₜ = length(t)
-    xlogx(x) = isapprox(x, 0) ? 0 : x * log(x)
-    xlogy(x, y) = isapprox(x, 0) ? 0 : x * log(y)
+function eps1basis(k, t)
+    N = length(t)
+    xlogy(x, y = x) = isapprox(x, 0) ? 0 : x * log(y)
     function I¹(i, ω)
         u₀ = (ω - t[i+1]) / (t[i+1] - t[i])
         u₁ = (ω - t[i+1]) / (t[i+2] - t[i+1])
         ωₛ = (ω - t[i+1]) / (t[i+2] - t[i])
         if abs(u₀) < 1e-9 || abs(u₁) < 1e-9
             log((t[i+2] - t[i+1]) / (t[i+1] - t[i])) -
-                (u₀ + u₁) + xlogx(u₀) + xlogx(u₁)            
+                (u₀ + u₁) + xlogy(u₀) + xlogy(u₁)            
         elseif abs(ωₛ) > 100
             mapreduce(n -> ((-1 / u₀)^n - (1 / u₁)^n) / n(n+1), +, 1:5)
         else
@@ -109,7 +114,7 @@ function eps1basis(k, t, x)
         end
     end
     function I(k, i, ω)
-        if (i+k+1 > Nₜ); return 0; end
+        if (i+k+1 > N); return 0; end
         if k == 1 
             I¹(i, ω)
         else
@@ -118,8 +123,10 @@ function eps1basis(k, t, x)
         end
     end
     ϕ(k, i, ω) = 1 / π * (I(k, i, ω) + I(k, i, -ω))
-    # return ϕ.(k, transpose(1:Nₜ), x)
-    return MDF(i -> ϕ.(k, transpose(i), x), Nₜ)
+    ## k, t are fixed
+    f(i::Idx, x) = ϕ.(k, transpose(i), x)
+    f(x) = ϕ.(k, transpose(1:N), x)
+    return MDF(f, N)
 end
 
 end

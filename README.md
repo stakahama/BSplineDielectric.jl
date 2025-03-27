@@ -6,13 +6,13 @@ This package implements recursive B-splines that fulfill Kramers Kronig relation
 Johs and Hale illustrated their use for modeling dielectric functions, but they can be used to represent any function that fulfills the Kramers-Kronig relation such as the complex refractive index or Clausius-Mossotti factor.
 
 Installation.
-```{julia}
+```julia
 using Pkg
 Pkg.add(url = "https://github.com/stakahama/BSplineDielectric.jl")
 ```
 
 Example usage.
-```{julia}
+```julia
 ## Libraries
 using Plots
 using BSplineDielectric
@@ -29,17 +29,17 @@ end
 curve = triangle.(x)
 
 ## Identify knot positions and generate spline bases
-i = range(1, length(x), step = 2)
-B = eps2basis(1, x[i], x)
-ϕ = eps1basis(1, x[i], x)
+iknots = range(1, length(x), step = 2)
+B = eps2basis(1, x[iknots])
+ϕ = eps1basis(1, x[iknots])
 
 ## View firts terms of spline basis
-plot(x, B.basis(1))
-plot(x, B.basis(1:2), legend = false)
+plot(x, B.f(1, x), legend = false)
+plot(x, B.f(1:2, x), legend = false)
 
-## Get full basis matrices
-Bmat = expand(B)
-ϕmat = expand(ϕ)
+## Get full basis matrices evaluated at x
+Bmat = B.f(x)
+ϕmat = ϕ.f(x)
 
 ## Estimate spline coefficients
 coef =  Bmat \ curve
@@ -50,10 +50,10 @@ plot!(x, Bmat * coef, label = "ε₂ model")
 plot!(x, ϕmat * coef, label = "ε₁ model")
 
 ## Apply same coefficients on B-splines of degree 3
-B3 = eps2basis(3, x[i], x)
-ϕ3 = eps1basis(3, x[i], x)
+B3 = eps2basis(3, x[iknots])
+ϕ3 = eps1basis(3, x[iknots])
 
 ## Plot
-plot(x, expand(B3) * coef, label = "ε₂ model")
-plot!(x, expand(ϕ3) * coef, label = "ε₁ model")
+plot(x, B3.f(x) * coef, label = "ε₂ model")
+plot!(x, ϕ3.f(x) * coef, label = "ε₁ model")
 ```
