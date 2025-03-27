@@ -6,21 +6,25 @@ Implementation of Johs and Hale, doi:10.1002/pssa.200777754, 2008
 """
 module BSplineDielectric
 
-export MDF, eps2basis, eps1basis
+export MDF, eps2basis, eps1basis, nknots
 
 Idx = Union{Integer, Vector{<:Integer}, UnitRange{<:Integer}}
 
 """
 (MDF) model dielectric function
+subtype of Function abstract type
 
 ### Fields
 f: model function
 n: number of knots
 """
-struct MDF
+struct MDF <: Function
     f::Function
     n::Integer
 end
+
+(f::MDF)(args...) = f.f(args...)
+nknots(f::MDF) = f.n
 
 """
 Basis functions for ε₂ (imaginary dielectric function)
@@ -30,23 +34,24 @@ k: degree of B-splines
 t: vector of knot positions
 
 ### Return value
-struct of type MDF. fields:
+struct of type MDF - can be called as a function. fields:
 f: vectorized function (polymorphic)
    f(indices, positions): basis vector or matrix (partial) for knot index(indices) and wavelength/wavenumber/frequency position(s)
    f(positions): full basis matrix for wavelength/wavenumber/frequency position(s)
 n: number of knots
 
+
 ### Example
 B = eps2basis(k, knots)
 
 ## at first knot
-plot(x, B.f(1, x))
+plot(x, B(1, x))
 
 ## at first two knots
-plot(x, B.f(1:2, x))
+plot(x, B(1:2, x))
 
 ## full basis expansion
-plot(x, B.f(x) * ones(B.n))
+plot(x, B(x) * ones(nknots(B)))
 """
 function eps2basis(k, t)
     N = length(t)
@@ -74,7 +79,7 @@ k: degree of B-splines
 t: vector of knots
 
 ### Return value
-struct of type MDF. fields:
+struct of type MDF - can be called as a function. fields:
 f: vectorized function (polymorphic)
    f(indices, positions): basis vector or matrix (partial) for knot index(indices) and wavelength/wavenumber/frequency position(s)
    f(positions): full basis matrix for wavelength/wavenumber/frequency position(s)
@@ -84,13 +89,13 @@ n: number of knots
 ϕ = eps1basis(k, knots)
 
 ## at first knot
-plot(x, ϕ.f(1, x))
+plot(x, ϕ(1, x))
 
 ## at first two knots
-plot(x, ϕ.f(1:2, x))
+plot(x, ϕ(1:2, x))
 
 ## full basis expansion
-plot(x, ϕ.f(x) * ones(ϕ.n))
+plot(x, ϕ(x) * ones(nknots(ϕ)))
 """
 function eps1basis(k, t)
     N = length(t)

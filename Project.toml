@@ -1,6 +1,6 @@
 name = "BSplineDielectric"
 uuid = "3f0de8df-4132-4c24-9866-68b776376c04"
-authors = ["stakahama <satoshi.takahama@gmail.com> and contributors"]
+authors = ["Satoshi Takahama <satoshi.takahama@epfl.ch>"]
 version = "0.1.0"
 
 [extras]
