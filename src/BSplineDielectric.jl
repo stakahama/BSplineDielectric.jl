@@ -67,7 +67,7 @@ function eps2basis(k, t)
     N = length(t)
     B⁰(i, x) = t[i] <= x < t[i+1] ? 1 : 0
     function B(k, i, x)
-        if (i+k+1 > N); return 0; end
+        if (i+k+1 > N) return 0 end
         if k == 0
             B⁰(i, x)
         else
@@ -111,7 +111,7 @@ function eps1basis(k, t)
             log((t[i+2] - t[i+1]) / (t[i+1] - t[i])) -
                 (u₀ + u₁) + xlogy(u₀) + xlogy(u₁)            
         elseif abs(ωₛ) > 100
-            mapreduce(n -> ((-1 / u₀)^n - (1 / u₁)^n) / n(n+1), +, 1:5)
+            mapreduce(n -> ((-1 / u₀)^n - (1 / u₁)^n) / (n * (n+1)), +, 1:5)
         else
             if isapprox(ω, t[i+1])
                 return log((t[i+2] - t[i+1]) / (t[i+1] - t[i]))
@@ -122,7 +122,7 @@ function eps1basis(k, t)
         end
     end
     function I(k, i, ω)
-        if (i+k+1 > N); return 0; end
+        if (i+k+1 > N) return 0 end
         if k == 1 
             I¹(i, ω)
         else
