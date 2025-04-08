@@ -1,9 +1,16 @@
 BSplineDielectric.jl
 ==============
 
-This package implements recursive B-splines that fulfill Kramers Kronig relations as described by Johs and Hale (doi:[10.1002/pssa.200777754](https://doi.org/10.1002/pssa.200777754), 2008). 
+This package implements recursive B-splines that model dielectric functions as described by Johs and Hale (doi:[10.1002/pssa.200777754](https://doi.org/10.1002/pssa.200777754), 2008). They can be used more generally to represent any function that fulfills the Kramers-Kronig relation - such as the complex refractive index and Clausius-Mossotti factor.
 
-Johs and Hale illustrated their use for modeling dielectric functions, but they can be used to represent any function that fulfills the Kramers-Kronig relation - such as the complex refractive index and Clausius-Mossotti factor.
+Standard B-splines are used to model the imaginary part while another recursive formula models the real part. The former are more efficiently implemented in several other packages:
+
+- BSplineKit.jl
+- BasicBSpline.jl
+- BSplines.jl
+- Dierckx.jl
+
+and the coefficients can be used to generate the complementary splines for the latter.
 
 Installation.
 ```julia
