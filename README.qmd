@@ -1,30 +1,28 @@
-# BSplineDielectric.jl
+---
+title: "BSplineDielectric.jl"
+format: gfm
+execute:
+  output: false
+---
 
-
-This package implements recursive B-splines that model imaginary and
-real dielectric functions as described by Johs and Hale
-(doi:[10.1002/pssa.200777754](https://doi.org/10.1002/pssa.200777754),
-2008). They can be used more generally to represent any function that
-fulfills the Kramers-Kronig relation - such as the complex refractive
-index and Clausius-Mossotti factor.
+This package implements recursive B-splines that model imaginary and real dielectric functions as described by Johs and Hale (doi:[10.1002/pssa.200777754](https://doi.org/10.1002/pssa.200777754), 2008). They can be used more generally to represent any function that fulfills the Kramers-Kronig relation - such as the complex refractive index and Clausius-Mossotti factor.
 
 ## Installation
 
-``` julia
+```julia
 using Pkg
 Pkg.add(url = "https://github.com/stakahama/BSplineDielectric.jl")
 ```
 
 ## Example usage
 
-``` julia
+```{julia}
 using Plots
 using BSplineDielectric
 ```
 
 Define x values and knot positions; generate curve.
-
-``` julia
+```{julia}
 function triangle(x)
     2 < x ≤ 3 ? x - 2 :
     3 < x ≤ 4 ? 4 - x :
@@ -37,82 +35,68 @@ curve = triangle.(x)
 ```
 
 Identify knot positions and generate spline bases.
-
-``` julia
+```{julia}
 B = eps2basis(1, x[iknots])
 ϕ = eps1basis(1, x[iknots])
 ```
 
 View first terms of spline basis
-
-``` julia
+```{julia}
+#| output: true
 plot(x, B(1, x), legend = false)
 plot(x, B(1:2, x), legend = false)
 ```
 
-![](README_files/figure-commonmark/cell-5-output-1.svg)
-
 Get number of knots (maximum allowable index).
-
-``` julia
+```{julia}
 nknots(B)  # same with nknots(ϕ)
 ```
 
 Get knot positions.
-
-``` julia
+```{julia}
+#| eval: false
 knots(B)  # same with knots(ϕ)
 ```
 
 Get full basis matrices evaluated at `x`.
-
-``` julia
+```{julia}
 Bmat = B(x)
 ϕmat = ϕ(x)
 ```
 
 Estimate spline coefficients.
-
-``` julia
+```{julia}
 coef =  Bmat \ curve
 ```
 
 Plot fits.
-
-``` julia
+```{julia}
+#| output: true
 plot(x, curve, label = "ε₂")
 plot!(x, Bmat * coef, label = "ε₂ model")
 plot!(x, ϕmat * coef, label = "ε₁ model")
 ```
 
-![](README_files/figure-commonmark/cell-10-output-1.svg)
-
 Apply same coefficients on B-splines of degree 3.
-
-``` julia
+```{julia}
 B3 = eps2basis(3, x[iknots])
 ϕ3 = eps1basis(3, x[iknots])
 ```
 
 Plot.
-
-``` julia
+```{julia}
+#| output: true
 plot(x, B3(x) * coef, label = "ε₂ model")
 plot!(x, ϕ3(x) * coef, label = "ε₁ model")
 ```
 
-![](README_files/figure-commonmark/cell-12-output-1.svg)
-
 ## Notes
 
-Standard B-splines are used to model the imaginary part while another
-recursive formula models the real part. The former are more efficiently
-implemented in several other packages:
+Standard B-splines are used to model the imaginary part while another recursive formula models the real part. The former are more efficiently implemented in several other packages:
 
 - [BSplineKit.jl](https://github.com/jipolanco/BSplineKit.jl)
 - [BasicBSpline.jl](https://github.com/hyrodium/BasicBSpline.jl)
 - [BSplines.jl](https://github.com/sostock/BSplines.jl)
 - [Dierckx.jl](https://github.com/JuliaMath/Dierckx.jl)
 
-and the coefficients can be used to generate the complementary splines
-for the latter.
+and the coefficients can be used to generate the complementary splines for the latter.

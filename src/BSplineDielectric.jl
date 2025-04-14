@@ -50,8 +50,8 @@ nknots(f::MDF) = f.n
 Basis functions for ε₂ (imaginary dielectric function)
 
 ### Parameters
-- k: degree of B-splines
-- t: vector of knot positions
+- `k`: degree of B-splines
+- `t`: vector of knot positions
 
 ### Returns
 struct of type MDF - can be called as a function.
@@ -91,8 +91,8 @@ end
 Basis functions for ε₁ (real dielectric function)
 
 ### Parameters
-- k: degree of B-splines
-- t: vector of knots
+- `k`: degree of B-splines
+- `t`: vector of knots
 
 ### Returns
 struct of type MDF - can be called as a function.
