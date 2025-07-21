@@ -1,35 +1,25 @@
-# BSplineDielectric.jl
+---
+title: "BSplineDielectric.jl"
+format: gfm
+execute:
+  output: false
+---
 
+[![Build Status](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-[![Build
-Status](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml?query=branch%3Amain)
-
-This package implements recursive B-splines that model imaginary and
-real dielectric functions as described by Johs and Hale
-(doi:[10.1002/pssa.200777754](https://doi.org/10.1002/pssa.200777754),
-2008). They can be used more generally to represent any function that
-fulfills the Kramers-Kronig relation - such as the complex refractive
-index and Clausius-Mossotti factor.
+This package implements recursive B-splines that model imaginary and real dielectric functions as described by Johs and Hale (doi:[10.1002/pssa.200777754](https://doi.org/10.1002/pssa.200777754), 2008). They can be used more generally to represent any function that fulfills the Kramers-Kronig relation - such as the complex refractive index and Clausius-Mossotti factor.
 
 To model dielectric functions with B-splines:
 
-- B-splines for the imaginary part follow de Boor’s recursive relation.
-- B-splines for the real part follow a separate recursive relation that
-  fulfills the Kramers Kronig relation.
-- The modeled dielectric function should decay to zero beyond the domain
-  of the provided data. This property can be implemented with exterior
-  knots placed outside of the domain of data, or augmented with a
-  separate function.
+- B-splines for the imaginary part follow de Boor's recursive relation. 
+- B-splines for the real part follow a separate recursive relation that fulfills the Kramers Kronig relation. 
+- The modeled dielectric function should decay to zero beyond the domain of the provided data. This property can be implemented with exterior knots placed outside of the domain of data, or augmented with a separate function.
 
-Faster implementations for the de Boor relations can be found in other
-packages. Knots and coefficients obtained with these packages can be
-used together with the model dielectric function (`MDF`) struct
-generated from `eps1basis` to generate the B-Spline basis for the real
-dielectric function.
+Faster implementations for the de Boor relations can be found in other packages. Knots and coefficients obtained with these packages can be used together with the model dielectric function (`MDF`) struct generated from `eps1basis` to generate the B-Spline basis for the real dielectric function.
 
 ## Installation
 
-``` julia
+```julia
 using Pkg
 Pkg.add(url="https://github.com/stakahama/BSplineDielectric.jl")
 ```
@@ -38,21 +28,17 @@ Pkg.add(url="https://github.com/stakahama/BSplineDielectric.jl")
 
 ### Preamble
 
-``` julia
+```{julia}
 using Plots
 using BSplineDielectric
 using SparseArrays
 ```
-
-SparseArrays is not a requirement for BSplineDielectric, but can be
-installed separately to take advantage of sparse matrix operations.
+SparseArrays is not a requirement for BSplineDielectric, but can be installed separately to take advantage of sparse matrix operations.
 
 ### Triangular function
 
-Define `x` values and generate curve; create function for defining knot
-positions from `x`.
-
-``` julia
+Define `x` values and generate curve; create function for defining knot positions from `x`.
+```{julia}
 function triangle(x)
     2 < x ≤ 3 ? x - 2 :
     3 < x ≤ 4 ? 4 - x :
@@ -64,8 +50,7 @@ curve = triangle.(x)
 ```
 
 Identify knot positions and generate spline bases.
-
-``` julia
+```{julia}
 k = 1
 t = knotpos(Clamped(), k, x[1:2:end])
 B = eps2basis(k, t)
@@ -73,67 +58,56 @@ B = eps2basis(k, t)
 ```
 
 View first terms of spline basis.
-
-``` julia
+```{julia}
+#| output: true
 pl = plot(layout=(2, 1), legend=false, size=(400, 500))
 plot!(pl[1], x, B(1:5, x), ylabel="B(x)")
 plot!(pl[2], x, ϕ(1:5, x), ylabel="ϕ(x)")
 ```
-
-![](README_files/figure-commonmark/cell-5-output-1.svg)
-
-We can see that the basis matrix (design matrix) for `B` will be sparse
-but not for `ϕ`.
+We can see that the basis matrix (design matrix) for `B` will be sparse but not for `ϕ`.
 
 Get number of knots (maximum allowable index).
-
-``` julia
+```{julia}
 nknots(B)  # same with nknots(ϕ)
 ```
 
 Get knot positions.
-
-``` julia
+```{julia}
+#| eval: false
 knotpos(B)  # same with knotpos(ϕ)
 ```
 
 Get full basis matrices evaluated at `x`.
-
-``` julia
+```{julia}
 Bmat = B(x) |> sparse
 ϕmat = ϕ(x)
 ```
 
 Estimate spline coefficients.
-
-``` julia
+```{julia}
 coef =  Bmat \ curve
 ```
 
 Plot fits.
-
-``` julia
+```{julia}
+#| output: true
 plot(x, curve, label="ε₂")
 plot!(x, Bmat * coef, label="ε₂ model")
 plot!(x, ϕmat * coef, label="ε₁ model")
 plot!(size=(400, 250))
 ```
 
-![](README_files/figure-commonmark/cell-10-output-1.svg)
-
-### Lorentzian line shape function
+### Lorentzian line shape function 
 
 The Lorentzian function is peak-height normalized.
-
-``` julia
+```{julia}
 x₀ = 1000
 Γ = 20
 L(x) = 1 / (1 + ((x - x₀) / (Γ / 2))^2)
 ```
 
 Define domain that encompasses 99% of the Lorentzian peak area.
-
-``` julia
+```{julia}
 perc = 99.
 bounds = Γ / 2 * tan(π / 2 * perc / 1e2)
 x = range((@. x₀ + [-1, 1] * bounds)..., length = 10^3)
@@ -141,8 +115,7 @@ curve = L.(x)
 ```
 
 Generate design matrices.
-
-``` julia
+```{julia}
 k = 3
 t = knotpos(Clamped(), k, x[1:2:end])
 B3 = eps2basis(k, t)
@@ -152,39 +125,30 @@ B3mat = B3(x) |> sparse
 ```
 
 Fit.
-
-``` julia
+```{julia}
 coef = B3mat \ curve
 ```
 
 Plot.
-
-``` julia
+```{julia}
+#| output: true
 plot(x, curve, label="ε₂")
 plot!(x, B3mat * coef, label="ε₂ model")
 plot!(x, ϕ3mat * coef, label="ε₁ model")
 plot!(size=(400, 250))
 ```
 
-![](README_files/figure-commonmark/cell-15-output-1.svg)
-
 ### External knot placement
 
-Johs and Hale suggest placement of knots outside of the range of data as
-one strategy to taper curves toward zero.
+Johs and Hale suggest placement of knots outside of the range of data as one strategy to taper curves toward zero.
 
-In the following example, the wings of the Lorentzian function are
-truncated to contain only 80% of the peak area, and B-spline
-coefficients are fitted to this data only. Then, we use these spline
-coefficients to extrapolate over the range of `x` that contains 95% of
-the peak area. Two knot placements are compared:
+In the following example, the wings of the Lorentzian function are truncated to contain only 80% of the peak area, and B-spline coefficients are fitted to this data only. Then, we use these spline coefficients to extrapolate over the range of `x` that contains 95% of the peak area. Two knot placements are compared:
 
-1.  clamped
-2.  extended
+1. clamped
+2. extended
 
 Define functions for generating `x` values and curves.
-
-``` julia
+```{julia}
 xvals = let x₀=x₀, Γ=Γ, N=10^3
   # generate x values for a Lorentzian function with fixed parameters using N points
   function (perc)
@@ -204,8 +168,7 @@ end
 ```
 
 Apply functions.
-
-``` julia
+```{julia}
 # x values
 x80 = xvals(80.)
 x95 = xvals(95.)
@@ -225,8 +188,8 @@ extended = testf(k, t_ext, x80, x95)
 ```
 
 Compare knot placement.
-
-``` julia
+```{julia}
+#| output: true
 xrg = extrema(x95) 
 pl = plot(layout=(2, 1), size=(400, 500))
 plot!(pl[1], x95, L.(x95), label=false, xlim=xrg)
@@ -239,13 +202,9 @@ scatter!(pl[2], vcat(t_clamp, t_ext),
     legend=false)
 ```
 
-![](README_files/figure-commonmark/cell-18-output-1.svg)
-
-Placement of knots beyond range of provided data (spanning 80% of
-Lorentzian peak area) enables better extrapolation of peak wings and
-estimation of `ε₁`.
-
-``` julia
+Placement of knots beyond range of provided data (spanning 80% of Lorentzian peak area) enables better extrapolation of peak wings and estimation of `ε₁`.
+```{julia}
+#| output: true
 cs = palette(:tab10)
 pl = plot(layout=(2, 1), size=(400, 500))
 plot!(pl[1], x80, L.(x80), linecolor=cs[1], label="ε₂ (80%)", legend=:topleft)
@@ -258,13 +217,9 @@ plot!(pl[2], x95, hcat(clamped[:,1], extended[:,1]),
 hline!(pl[2], [0.0], linestyle=:dot, linecolor=cs[8], label=nothing)
 ```
 
-![](README_files/figure-commonmark/cell-19-output-1.svg)
-
-Close-up view of extended knot placement. The extended knots do not
-extrapolate the wings perfectly, but provide an improvement over the
-conventional clamped placement.
-
-``` julia
+Close-up view of extended knot placement. The extended knots do not extrapolate the wings perfectly, but provide an improvement over the conventional clamped placement.
+```{julia}
+#| output: true
 pl = plot(size=(400, 250))
 plot!(pl, x95, L.(x95), linecolor=cs[1], label="ε₂ (95%)")
 plot!(pl, x95, extended, linestyle=[:solid :dash], 
@@ -272,26 +227,18 @@ plot!(pl, x95, extended, linestyle=[:solid :dash],
 hline!(pl, [0.0], linestyle=:dot, label=nothing)
 ```
 
-![](README_files/figure-commonmark/cell-20-output-1.svg)
-
 ## Notes
 
-Standard B-splines are used to model the imaginary part while another
-recursive formula models the real part. The former are more efficiently
-implemented in several other packages:
+Standard B-splines are used to model the imaginary part while another recursive formula models the real part. The former are more efficiently implemented in several other packages:
 
 - [BSplineKit.jl](https://github.com/jipolanco/BSplineKit.jl)
 - [BasicBSpline.jl](https://github.com/hyrodium/BasicBSpline.jl)
 - [BSplines.jl](https://github.com/sostock/BSplines.jl)
 - [Dierckx.jl](https://github.com/JuliaMath/Dierckx.jl)
 
-and the coefficients can be used together with the complementary splines
-(from `ep1basis`) generated by this package.
+and the coefficients can be used together with the complementary splines (from `ep1basis`) generated by this package.
 
 ## References
 
-- Johs, B. and Hale, J. S.: Dielectric function representation by
-  B-splines, physica status solidi (a), 205, 715–719,
-  https://doi.org/10.1002/pssa.200777754, 2008.
-- de Boor, C.: /A Practical Guide to Splines: Revised Edition/,
-  Springer-Verlag, New York, 2003.
+- Johs, B. and Hale, J. S.: Dielectric function representation by B-splines, physica status solidi (a), 205, 715–719, https://doi.org/10.1002/pssa.200777754, 2008.
+- de Boor, C.: /A Practical Guide to Splines: Revised Edition/, Springer-Verlag, New York, 2003.
