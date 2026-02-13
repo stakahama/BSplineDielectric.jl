@@ -1,8 +1,7 @@
 # BSplineDielectric.jl
 
 
-[![Build
-Status](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
 This package implements recursive B-splines that model imaginary and
 real dielectric functions as described by Johs and Hale
@@ -67,7 +66,7 @@ Identify knot positions and generate spline bases.
 
 ``` julia
 k = 1
-t = knotpos(Clamped(), k, x[1:2:end])
+t = knotgen(Clamped(), k, x[1:2:end])
 B = eps2basis(k, t)
 ϕ = eps1basis(k, t)
 ```
@@ -80,7 +79,7 @@ plot!(pl[1], x, B(1:5, x), ylabel="B(x)")
 plot!(pl[2], x, ϕ(1:5, x), ylabel="ϕ(x)")
 ```
 
-![](README_files/figure-commonmark/cell-5-output-1.svg)
+![](README_files/figure-commonmark/cell-6-output-1.svg)
 
 We can see that the basis matrix (design matrix) for `B` will be sparse
 but not for `ϕ`.
@@ -94,7 +93,7 @@ nknots(B)  # same with nknots(ϕ)
 Get knot positions.
 
 ``` julia
-knotpos(B)  # same with knotpos(ϕ)
+knotvec(B)  # same with knotpos(ϕ)
 ```
 
 Get full basis matrices evaluated at `x`.
@@ -119,7 +118,7 @@ plot!(x, ϕmat * coef, label="ε₁ model")
 plot!(size=(400, 250))
 ```
 
-![](README_files/figure-commonmark/cell-10-output-1.svg)
+![](README_files/figure-commonmark/cell-11-output-1.svg)
 
 ### Lorentzian line shape function
 
@@ -144,7 +143,7 @@ Generate design matrices.
 
 ``` julia
 k = 3
-t = knotpos(Clamped(), k, x[1:2:end])
+t = knotgen(Clamped(), k, x[1:2:end])
 B3 = eps2basis(k, t)
 ϕ3 = eps1basis(k, t)
 B3mat = B3(x) |> sparse
@@ -166,7 +165,7 @@ plot!(x, ϕ3mat * coef, label="ε₁ model")
 plot!(size=(400, 250))
 ```
 
-![](README_files/figure-commonmark/cell-15-output-1.svg)
+![](README_files/figure-commonmark/cell-16-output-1.svg)
 
 ### External knot placement
 
@@ -179,8 +178,8 @@ coefficients are fitted to this data only. Then, we use these spline
 coefficients to extrapolate over the range of `x` that contains 95% of
 the peak area. Two knot placements are compared:
 
-1.  clamped
-2.  extended
+1.  clamped (“Clamped”)
+2.  extended (“PaddedLinear”)
 
 Define functions for generating `x` values and curves.
 
@@ -203,7 +202,8 @@ function testf(k, t, x, xp)
 end
 ```
 
-Apply functions.
+Apply functions. The exansion factor is arbitrarily selected in this
+case to generate a close match.
 
 ``` julia
 # x values
@@ -213,11 +213,11 @@ x95 = xvals(95.)
 # parameters
 k = 3                 # degree
 breaks = x80[1:2:end] # break points (interior knots)
-expf = 1e2            # expansion factor
+expf = 1.5e2          # expansion factor
 
 # knots
-t_clamp = knotpos(Clamped(), k, breaks)
-t_ext = knotpos(ExtendedEven(), k, breaks, expf)
+t_clamp = knotgen(Clamped(), k, breaks)
+t_ext = knotgen(PaddedLinear(), k, breaks, expf)
 
 # extrapolated curves
 clamped = testf(k, t_clamp, x80, x95)
@@ -239,7 +239,7 @@ scatter!(pl[2], vcat(t_clamp, t_ext),
     legend=false)
 ```
 
-![](README_files/figure-commonmark/cell-18-output-1.svg)
+![](README_files/figure-commonmark/cell-19-output-1.svg)
 
 Placement of knots beyond range of provided data (spanning 80% of
 Lorentzian peak area) enables better extrapolation of peak wings and
@@ -258,7 +258,7 @@ plot!(pl[2], x95, hcat(clamped[:,1], extended[:,1]),
 hline!(pl[2], [0.0], linestyle=:dot, linecolor=cs[8], label=nothing)
 ```
 
-![](README_files/figure-commonmark/cell-19-output-1.svg)
+![](README_files/figure-commonmark/cell-20-output-1.svg)
 
 Close-up view of extended knot placement. The extended knots do not
 extrapolate the wings perfectly, but provide an improvement over the
@@ -272,7 +272,7 @@ plot!(pl, x95, extended, linestyle=[:solid :dash],
 hline!(pl, [0.0], linestyle=:dot, label=nothing)
 ```
 
-![](README_files/figure-commonmark/cell-20-output-1.svg)
+![](README_files/figure-commonmark/cell-21-output-1.svg)
 
 ## Notes
 

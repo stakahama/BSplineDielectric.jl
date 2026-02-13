@@ -3,6 +3,7 @@ title: "BSplineDielectric.jl"
 format: gfm
 execute:
   output: false
+engine: julia
 ---
 
 [![Build Status](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/stakahama/BSplineDielectric.jl/actions/workflows/CI.yml?query=branch%3Amain)
@@ -29,6 +30,12 @@ Pkg.add(url="https://github.com/stakahama/BSplineDielectric.jl")
 ### Preamble
 
 ```{julia}
+#| echo: false
+using Pkg
+Pkg.activate(".")
+```
+
+```{julia}
 using Plots
 using BSplineDielectric
 using SparseArrays
@@ -52,7 +59,7 @@ curve = triangle.(x)
 Identify knot positions and generate spline bases.
 ```{julia}
 k = 1
-t = knotpos(Clamped(), k, x[1:2:end])
+t = knotgen(Clamped(), k, x[1:2:end])
 B = eps2basis(k, t)
 ϕ = eps1basis(k, t)
 ```
@@ -74,7 +81,7 @@ nknots(B)  # same with nknots(ϕ)
 Get knot positions.
 ```{julia}
 #| eval: false
-knotpos(B)  # same with knotpos(ϕ)
+knotvec(B)  # same with knotpos(ϕ)
 ```
 
 Get full basis matrices evaluated at `x`.
@@ -117,7 +124,7 @@ curve = L.(x)
 Generate design matrices.
 ```{julia}
 k = 3
-t = knotpos(Clamped(), k, x[1:2:end])
+t = knotgen(Clamped(), k, x[1:2:end])
 B3 = eps2basis(k, t)
 ϕ3 = eps1basis(k, t)
 B3mat = B3(x) |> sparse
@@ -144,8 +151,8 @@ Johs and Hale suggest placement of knots outside of the range of data as one str
 
 In the following example, the wings of the Lorentzian function are truncated to contain only 80% of the peak area, and B-spline coefficients are fitted to this data only. Then, we use these spline coefficients to extrapolate over the range of `x` that contains 95% of the peak area. Two knot placements are compared:
 
-1. clamped
-2. extended
+1. clamped ("Clamped")
+2. extended ("PaddedLinear")
 
 Define functions for generating `x` values and curves.
 ```{julia}
@@ -167,7 +174,7 @@ function testf(k, t, x, xp)
 end
 ```
 
-Apply functions.
+Apply functions. The exansion factor is arbitrarily selected in this case to generate a close match.
 ```{julia}
 # x values
 x80 = xvals(80.)
@@ -176,11 +183,11 @@ x95 = xvals(95.)
 # parameters
 k = 3                 # degree
 breaks = x80[1:2:end] # break points (interior knots)
-expf = 1e2            # expansion factor
+expf = 1.5e2          # expansion factor
 
 # knots
-t_clamp = knotpos(Clamped(), k, breaks)
-t_ext = knotpos(ExtendedEven(), k, breaks, expf)
+t_clamp = knotgen(Clamped(), k, breaks)
+t_ext = knotgen(PaddedLinear(), k, breaks, expf)
 
 # extrapolated curves
 clamped = testf(k, t_clamp, x80, x95)

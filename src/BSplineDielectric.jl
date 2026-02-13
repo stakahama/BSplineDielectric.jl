@@ -6,25 +6,11 @@ Implementation of Johs and Hale, doi:10.1002/pssa.200777754, 2008
 """
 module BSplineDielectric
 
-export MDF, eps2basis, eps1basis, knots, nknots, knotpos, Clamped, ExtendedEven
+export MDF, eps2basis, eps1basis, nknots, degree, nbasis, knotpos, knotgen,
+    KnotBoundary, Clamped, PaddedLinear
 
-IdxVal = Union{Integer, AbstractVector{<:Integer}, AbstractUnitRange{<:Integer}}
-RealVal = Union{Real, AbstractVector{<:Real}}
-
-#=
-Notation
-| symbol            | description       |
-|-------------------+-------------------|
-| \(k\)             | polynomial degree |
-| \(k+1\)           | order of spline   |
-| \(x\), \(\omega\) | domain            |
-| \(t\)             | knot              |
-| \(n\)             | number of knots   |
-
-- \(n-k-1\): number of control points; number of columns of design matrix
-- \([t_{k}, t_{n-k-1}]\): domain of data
-- \([t_{i}, t_{i+k+1})\): interval over which values are nonzero for each basis spline (`eps2basis`)
-=#
+const IdxVal = Union{Integer, AbstractVector{<:Integer}, AbstractUnitRange{<:Integer}}
+const RealVal = Union{Real, AbstractVector{<:Real}}
 
 """
 (MDF) model dielectric function
@@ -34,30 +20,33 @@ subtype of Function abstract type
 - `f`: model function
 - `k`: degree of B-splines
 - `t`: knots
-- `n`: number of knots
 
 ### Methods
 - `(f::MDF)(i::IdxVal, x::RealVal)`: basis vector or matrix for given knot index/indices and wavelength/wavenumber/frequency position(s) 
 - `(f::MDF)(x::RealVal)`: full basis matrix (design matrix) for wavelength/wavenumber/frequency position(s)
 - `knotpos(f::MDF)`: knot positions
+- `degree(f::MDF)`: degree of polynomial
 - `nknots(f::MDF)`: number of knots
+- `nbasis(f::MDF)`: number of basis functions
 where
 - `IdxVal = Union{Integer, AbstractVector{<:Integer}, AbstractUnitRange{<:Integer}}`
 - `RealVal = Union{Real, AbstractVector{<:Real}}`
 The knots and number of knots can be retrieved with `knots` and `nknots`, respectively.
-"""
-struct MDF <: Function
-    f::Function
-    k::Integer
-    t::Vector{<:Real}
-    n::Integer
+    """
+struct MDF{F,K<:Integer,R<:Real} <: Function
+    f::F
+    k::K
+    t::Vector{R}
 end
 
 (f::MDF)(i::IdxVal, x::RealVal) = f.f.(f.k, transpose(i), x)
-(f::MDF)(x::RealVal) = f.f.(f.k, transpose(1:f.n-f.k-1), x) # design matrix
+(f::MDF)(x::RealVal) = f.f.(f.k, transpose(1:(nknots(f)-f.k-1)), x) # design matrix
 
 knotpos(f::MDF) = f.t
-nknots(f::MDF) = f.n
+degree(f::MDF) = f.k
+nknots(f::MDF) = length(f.t)
+nbasis(f::MDF) = nknots(f) - degree(f) - 1
+
 
 """
 Conditional product operator
@@ -104,42 +93,59 @@ macro rlog(expr)
     return esc(:(isapprox($(y2), $(y1)) || isapprox($(x2), $(x1)) ? 0.0 : log($(expr))))
 end
 
+abstract type KnotBoundary end
+struct Clamped <: KnotBoundary end
+struct PaddedLinear <: KnotBoundary end
+
+
 """
-Knot generation
-    function knotpos(::KnotGen, k::Integer, x::Vector{<:Real}, ...)
-    function knotpos(f::MDF)
+    function knotgen(::KnotGen, k::Integer, x::Vector{<:Real}, ...)
+
+Function for knot generation.
 
 ### Parameters
-- `::KnotGen`: struct which determines the method of calculation
+- `::KnotBoundary`: struct which determines the method of calculation
 - `k`::Integer: degree
 - `x`::Vector{<:Real}: break points (interior knots)
 - `...`: additional arguments
 
 ### Methods
 - for `Clamped()`: augmentation results in `k+1` repeated values of the extrema of break points `x`
-- for `ExtendedEven()`: extends by `f * (1:k) * dx`` on either side of `x` where `dx` is estimated from the interval of `x` (assuming evenly spaced)
+- for `PaddedLinear()`: pads both ends by `f * (1:k) * dx`, where `dx` at each end is estimated from the interval of the last two extrema of `x`.
 - for `f::MDF`: returns knot positions for struct `MDF`
 
 ### Returns
 Vector of knot positions
 """
-abstract type KnotGen end
-struct Clamped <: KnotGen end
-struct ExtendedEven <: KnotGen end
+function knotgen end
 
-knotpos(::Clamped, k::Integer, x::RealVal) = vcat(
-    fill(x[1], k), 
-    x, 
-    fill(x[end], k)
-)
-
-function knotpos(::ExtendedEven, k::Integer, x::RealVal, f::Real=1e2)
-    dx = only(diff(x[1:2]))
+function knotgen(::Clamped, k::Integer, x::RealVal)
+    a = x[begin]
+    b = x[end]
+    interior = x[begin+1:end-1]
     return vcat(
-        x[1] .- f .* (k:-1:1) .* dx, 
-        x, 
-        x[end] .+ f .* (1:k) .* dx
+        fill(a, k+1), 
+        interior, 
+        fill(b, k+1)
     )
+end
+
+function knotgen(::PaddedLinear, k::Integer, x::RealVal, f::Real=1e2)
+    a = x[begin]
+    b = x[end]
+    dx1 = only(diff(x[begin:begin+1]))
+    dx2 = only(diff(x[end-1:end]))
+    return vcat(
+        a .- f .* (k:-1:1) .* dx1, 
+        x, 
+        b .+ f .* (1:k) .* dx2
+    )
+end
+
+function isclamped(k::Int, t::AbstractVector{<:Real})
+    a = t[1]
+    b = t[end]
+    all(t[1:k+1] .== a) && all(t[end-k:end] .== b)
 end
                             
 """
@@ -163,12 +169,17 @@ struct of type MDF - can be called as a function.
 
     ## full basis expansion
     plot(x, B(x) * ones(nknots(B)))
-"""
-function eps2basis(k::Integer, t::RealVal)
+    """
+function eps2basis(k::Integer, t::AbstractVector{<:Real})
     n = length(t)
-    B⁰(i::Integer, x::Real) = t[i] <= x < t[i+1] ? 1.0 : 0.0            # Eq. 1
+    # B⁰(i::Integer, x::Real) = t[i] <= x < t[i+1] ? 1.0 : 0.0                  # Eq. 1
+    function B⁰(i::Integer, x::Real)
+        if t[i] <= x < t[i+1] return 1.0 end
+        if isapprox(x, t[end]) && isapprox(x, t[i+1]) return 1.0 end
+        return 0.0
+    end    
     function B(k::Integer, i::Integer, x::Real)
-        if (i+k+1 > n) return 0.0 end
+        if (i > n - k - 1) return 0.0 end
         if k == 0
             return B⁰(i, x)
         else
@@ -180,7 +191,7 @@ function eps2basis(k::Integer, t::RealVal)
                 @rdiv((t[i+k+1] - x) / (t[i+k+1] - t[i+1])) * B(k-1, i+1, x) # Eq. 2
         end
     end
-    return MDF(B, k, t, n)
+    return MDF(B, k, t)
 end
 
 """
@@ -205,7 +216,7 @@ struct of type MDF - can be called as a function.
     ## full basis expansion
     plot(x, ϕ(x) * ones(nknots(ϕ)))
 """
-function eps1basis(k::Integer, t::RealVal)
+function eps1basis(k::Integer, t::AbstractVector{<:Real})
     n = length(t)
     function I¹(i::Integer, ω::Real)
         #= 
@@ -213,8 +224,8 @@ function eps1basis(k::Integer, t::RealVal)
         or `x` extremely close to or extremely far from a knot location.
         =#
         if ω > t[i+1] && t[i+1] > t[i] && t[i+2] > t[i+1]
-            u₀ = (ω - t[i+1]) / (t[i+1] - t[i])                                        # Eq. 13
-            u₁ = (ω - t[i+1]) / (t[i+2] - t[i+1])                                      # Eq. 13
+            u₀ = (ω - t[i+1]) / (t[i+1] - t[i])                                         # Eq. 13
+            u₁ = (ω - t[i+1]) / (t[i+2] - t[i+1])                                       # Eq. 13
             ωₛ = abs((ω - t[i+1]) / (t[i+2] - t[i]))                                    # Eq. 15
             if abs(u₀) < 1e-9 || abs(u₁) < 1e-9
                 return log((t[i+2] - t[i+1]) / (t[i+1] - t[i])) -
@@ -234,7 +245,7 @@ function eps1basis(k::Integer, t::RealVal)
         return α₀ ⊗ log(abs(1 - 1 / α₀)) - α₁ ⊗ log(abs(1 - 1 / α₁))
     end
     function I(k::Integer, i::Integer, ω::Real)
-        if (i+k+1 > n) return 0.0 end
+        if (i > n - k - 1) return 0.0 end
         if k == 1 
             return I¹(i, ω)
         else
@@ -245,11 +256,11 @@ function eps1basis(k::Integer, t::RealVal)
             both summation terms must be finite for results to be meaningful.
             =#
             return @rdiv((ω - t[i]) / (t[i+k] - t[i])) * I(k-1, i, ω) +
-                @rdiv((t[i+k+1] - ω) / (t[i+k+1] - t[i+1])) * I(k-1, i+1, ω)      # Eq. 11
+                @rdiv((t[i+k+1] - ω) / (t[i+k+1] - t[i+1])) * I(k-1, i+1, ω)  # Eq. 11
         end
     end
-    ϕ(k::Integer, i::Integer, ω::Real) = 1 / π * (I(k, i, ω) + I(k, i, -ω))  # Eq. 8
-    return MDF(ϕ, k, t, n)
+    ϕ(k::Integer, i::Integer, ω::Real) = 1 / π * (I(k, i, ω) + I(k, i, -ω))   # Eq. 8
+    return MDF(ϕ, k, t)
 end
 
 end # module
