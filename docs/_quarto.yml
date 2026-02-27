@@ -1,0 +1,6 @@
+project:
+  render:
+    - README.qmd
+    - comparisons.qmd
+  post-render:
+    - ./postscript.sh

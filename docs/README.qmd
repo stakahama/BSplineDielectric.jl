@@ -21,6 +21,7 @@ Faster implementations for the de Boor relations can be found in other packages.
 ## Installation
 
 ```julia
+#| eval: false
 using Pkg
 Pkg.add(url="https://github.com/stakahama/BSplineDielectric.jl")
 ```

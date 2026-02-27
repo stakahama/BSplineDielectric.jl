@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "5a93fee361e85e157c0509dbf5cd40876c1d7375"
+project_hash = "c1ee65e2047c129b4a5f33bd32a2472118c8c8e0"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -19,7 +19,6 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 version = "1.11.0"
 
 [[deps.BSplineDielectric]]
-deps = ["Plots", "SparseArrays"]
 path = "/home/stakahama/.julia/dev/BSplineDielectric"
 uuid = "a2ecafb9-cd48-4d8b-9aa7-3586f5199c0a"
 version = "2.0.0-DEV"
